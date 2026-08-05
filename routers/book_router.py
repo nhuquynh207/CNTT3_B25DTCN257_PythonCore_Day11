@@ -1,42 +1,51 @@
-from fastapi import APIRouter,Depends,HTTPException,status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from schemas.book_schema import BookCreateSchema,BookUpdateSchema,BookResponseSchema
-from services.book_service import create_book,delete_book,get_all_books,get_book_by_id,update_book
 from database import get_db
+from schemas.book_schema import BookCreateSchema, BookUpdateSchema, BookResponseSchema
+from services import book_service
 
 router = APIRouter(
     prefix="/api/v1/books",
     tags=["Book Controller"]
 )
 
-@router.get("/",response_model=list[BookResponseSchema])
-def read_all_books(db:Session = Depends(get_db)):
-    books = get_all_books(db)
-    return books
 
-@router.post("/",response_model=BookCreateSchema)
-def create_new_book(book :BookCreateSchema,db:Session = Depends(get_db)):
-    return create_book(db,new_book = book)
+@router.get("/", response_model=list[BookResponseSchema])
+def get_all_books(db: Session = Depends(get_db)):
+    return book_service.get_all_books(db)
 
-@router.put("/{book_id}",response_model=BookUpdateSchema)
-def update_book_by_id(book_id:int,book_update:BookUpdateSchema,db:Session=Depends(get_db)):
-    book = update_book(db,book_id=book_id,book_in=book_update)
+
+@router.get("/{book_id}", response_model=BookResponseSchema)
+def get_book_by_id(book_id: int, db: Session = Depends(get_db)):
+    book = book_service.get_book_by_id(db, book_id)
+
     if not book:
-        raise HTTPException(status_code=404,detail="Không tìm thấy sách")
+        raise HTTPException(status_code=404, detail="Book not found")
 
     return book
+
+
+@router.post("/", response_model=BookResponseSchema)
+def create_book(book: BookCreateSchema, db: Session = Depends(get_db)):
+    return book_service.create_book(db, book)
+
+
+@router.put("/{book_id}", response_model=BookResponseSchema)
+def update_book(book_id: int, book: BookUpdateSchema, db: Session = Depends(get_db)):
+    update_book = book_service.update_book(db, book_id, book)
+
+    if not update_book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    return update_book
+
 
 @router.delete("/{book_id}")
-def delete_book_by_id(book_id:int,db:Session = Depends(get_db)):
-    del_book = delete_book(db,book_id=book_id)
-    if not del_book:
-        raise HTTPException(status_code=404,detail="Không tìm thấy sách")
-    return {"message":"Xóa thành công"}
+def delete_book(book_id: int, db: Session = Depends(get_db)):
+    book = book_service.delete_book(db, book_id)
 
-@router.get("/{book_id}")
-def get_book_by_ids(book_id:int,db:Session=Depends(get_db)):
-    book = get_book_by_id(db,book_id=book_id)
-    if not book :
-        raise HTTPException(status_code=404,detail="Khồn tìm thấy sách")
-    return book
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    return {"message": "Delete successfully"}
